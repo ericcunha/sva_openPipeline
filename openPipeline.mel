@@ -357,6 +357,7 @@ global proc openPipeline(string $scriptPath, string $projectFilePath)
 		sourceModule($openPipeline_scriptPath+$scriptsFolderName+"/addons/"); 
 		sourcePyModule($openPipeline_scriptPath+$scriptsFolderName+"/addons/");
 		sourceModule($openPipeline_scriptPath+$scriptsFolderName+"/custom/"); 
+		sourcePyModule($openPipeline_scriptPath+$scriptsFolderName+"/custom/");
         catch(`eval "openPipelineUI"`);
     }
     //If paths are not valid, run openPipeline setup.

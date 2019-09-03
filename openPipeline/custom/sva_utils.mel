@@ -111,3 +111,129 @@ global proc sva_swapRef()
     string $newFile = `referenceQuery -f $refNode`;
     file -e -namespace $nameSpace $newFile;   
 }
+///////////////////////////////////////////////////////////////////////////////////////////
+/*
+    NAME:    sva_removeShadingEdits
+    INFO:    removes shading edits from referenced objects
+    INPUT:   none
+    RETURN:  none
+*/
+///////////////////////////////////////////////////////////////////////////////////////////
+global proc sva_removeShadingEdits()
+{
+    //STORE SELECTION AND SHAPES
+    string $sel[] = `ls -long -sl`;
+    string $shapes[];
+    for($i=0;$i<size($sel);$i++)
+    {
+        string $newShapes[] = `listRelatives -f -s $sel[$i]`;
+        appendStringArray($shapes, $newShapes, size($newShapes));
+    }
+    //UNLOAD REFERENCES
+    string $refNodes[];
+    for($each in `ls -sl`){
+        if(`objExists $each`){
+            if(`referenceQuery -isNodeReferenced $each`){
+                string $refNode = `referenceQuery -referenceNode $each`;
+                $refNodes[size($refNodes)] = $refNode;
+                file -unloadReference $refNode;
+            }
+        }
+    }
+    //REMOVE EDITS TO INSTOBJGROUPS
+    for($i=0;$i<size($shapes);$i++)
+    {
+            referenceEdit -failedEdits true -successfulEdits true -editCommand connectAttr    -removeEdits ($shapes[$i] + ".instObjGroups");
+            referenceEdit -failedEdits true -successfulEdits true -editCommand disconnectAttr -removeEdits ($shapes[$i] + ".instObjGroups");
+    }
+    //RELOAD REFS
+    for($i=0;$i<size($refNodes);$i++)
+    {
+        file -loadReference $refNodes[$i];
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+/*
+    NAME:    sva_dupeAssignRefShdrs
+    INFO:    for each selected object the script will duplicate it's current shader and assign that 	
+			 duplicate if the original shader is referenced
+    INPUT:   none
+    RETURN:  none
+*/
+///////////////////////////////////////////////////////////////////////////////////////////
+global proc sva_dupeAssignRefShdrs()
+{
+    // GET THOSE SHAPE NODES
+    string $sel[] = `ls -long -sl`;
+    string $shapes[];
+    
+    for($item in $sel)
+    {
+        if(`objectType $item` == "transform")
+        {
+            string $shape[] = `listRelatives -f -s $item`;
+            $shapes[size($shapes)] = $shape[0];
+        }
+        else
+            $shapes[size($shapes)] = $item;
+    }
+
+    // GET THE SHADERS
+    string $shaders[];
+    for($shape in $shapes)
+    {
+        string $conns[] = `listConnections -type "shadingEngine" $shape`;
+        if(size(`ls -readOnly $conns[0]`))
+            $shaders[size($shaders)] = $conns[0];
+    }
+    $shaders = stringArrayRemoveDuplicates($shaders);
+
+    // DUPE THE SHADERS AND ASSIGN TO THE SAME OBJECTS
+    for($shader in $shaders)
+    {
+        string $conns[] = `listConnections -d off -s on $shader`;
+        string $meshes[] = {};
+        
+        for($conn in $conns)
+        {
+            if(`objectType $conn` == "transform")
+                $meshes[size($meshes)] = $conn;
+        }    
+
+        string $dupeShdr[] = `duplicate -un $shader`;
+        for($mesh in $meshes)
+        {
+            select -r $mesh;
+            hyperShade -a $dupeShdr[0];
+        }
+    } 
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+/*
+    NAME:    sva_assetExists
+    INFO:    used when creating a new asset in openPipeline to make sure the name isn't already taken by another type
+    INPUT:   $assetName = name of asset you want to check for
+    RETURN:  0 or 1 if asset name exists
+*/
+///////////////////////////////////////////////////////////////////////////////////////////
+global proc int sva_assetExists(string $assetName)
+{
+    // FIND THE ASSET BY SEARCHING THROUGH THE AVAILABLE TYPES
+    string $libPath = `optionVar -q op_libPath`;
+    string $assetTypes[] = `optionVar -q op_assetTypes`;
+    int $exists = 0;
+    // GET THE ASSET TYPE BY LOOKING IN ALL OF THE SUBDIRS OF ALL THE ASSET TYPES
+    for($type in $assetTypes)
+    {
+        string $typeDir = ($libPath + $type);
+        string $assetDirs[] = `getFileList -fld $typeDir`;
+        for($assetDir in $assetDirs)
+        {
+            if($assetDir == $assetName)
+            {
+                $exists = 1;
+            }
+        }
+    }
+    return $exists;
+}

@@ -169,8 +169,8 @@ global proc openPipelineUI()
 			
             menu -label "SVA";
                 menuItem -subMenu true -label "Referencing" ;
-                    menuItem -label "Remove Shading Edits"     -ann "Removes any shading edits done to the selected referenced objects." -c "nl_removeShadingEdits;";
-                    menuItem -label "Dupe and assign referenced shaders"     -ann "Duplicates the referenced shaders assigned to the selected objects and assigns the new duplicates." -c "ec_dupeAssignRefShdrs;";
+                    menuItem -label "Remove Shading Edits"     -ann "Removes any shading edits done to the selected referenced objects." -c "sva_removeShadingEdits;";
+                    menuItem -label "Dupe and assign referenced shaders"     -ann "Duplicates the referenced shaders assigned to the selected objects and assigns the new duplicates." -c "sva_dupeAssignRefShdrs;";
                 setParent -menu ..;
 				
 			menu -label "Help" -helpMenu true;
@@ -1182,5 +1182,62 @@ global proc openPipelineUI()
 			tabLayout -edit -sti 3  op_mainTabLayout;
 			tabLayout -edit -sti 2  op_mainTabLayout;
 			tabLayout -edit -sti 1  op_mainTabLayout;
+	}
+}
+//###########################################
+// Name: 					openPipelineNewAssetRetrieveInfo
+// Description: 	Retrieves pertinent info from the UI before calling "openPipelineCreateNewItem"
+// Input: 				$mode - creation mode for asset (see "openPipelineCreateNewItem")
+// Returns: 			none
+//###########################################
+global proc openPipelineNewAssetRetrieveInfo(int $mode)
+{
+	string $assetName = strip(`textField -q -tx op_newAssetNameField`);
+	string $selectedItem[] = openPipelineGetCurrentlySelectedItem(2, 1);
+	string $assetType = $selectedItem[0];
+    int $exists = sva_assetExists($assetName);
+	if ($exists)
+	{
+		confirmDialog -t "Create New Asset Error" -m "This asset name is already taken (maybe under another type). Please choose a new name!" -button "OK" ;
+	}
+	else if (`match "_" $assetName` == "_")
+	{
+		confirmDialog -t "Create New Asset Error" -m "No underscores allowed in asset names" -button "OK" ;
+	}
+	else if (`match "[0-9]+" $assetName` != "")
+	{
+		confirmDialog -t "Create New Asset Error" -m "No numbers allowed in asset names. Use letters instead!" -button "OK" ;
+	}
+	else if (!size($assetType))
+	{
+		confirmDialog -t "Create New Asset Error" -m "No Asset Type selected. Please select an Asset Type and try again." -button "OK" ;
+	}
+	else
+	{
+		string $result = openPipelineCreateNewItem(2,$assetType,$assetName,"",$mode);
+		if (size($result))
+		{
+			// Commenting out creation of components. In future, we will have different project types and create the appropriate components.
+			/*
+			// Create components for $assetType
+			string $projType = "default";
+			string $components[] = `openPipelineGetProjectAssetTypeComponents $projType $assetType`;
+			for ( $comp in $components )
+				openPipelineCreateNewItem(2,$assetType,$assetName,$comp,$mode);
+			*/
+            // AUTO CREATE THESE COMPONENTS!
+            string $components[] = {"RIG", "MDL", "SHD"};
+			for ( $comp in $components )
+				openPipelineCreateNewItem(2,$assetType,$assetName,$comp,$mode);
+			// Create workspaces
+            python("sva_utils.create_workspaces('" + $assetType + "','" + $assetName + "')")
+			// string $assetPSDFolder = `openPipelineGetFileName 2 $assetType $assetName "" "folder" 0 0` + "textures/PSD";
+
+			// python("import os\nos.makedirs('" + $assetPSDFolder + "')");
+			
+			openPipelineUpdateAssetList(1);
+			openPipelineRemoveSecondaryWindows();
+            openPipelineUpdateWorkingTab();
+		}
 	}
 }
