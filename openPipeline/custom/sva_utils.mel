@@ -1,0 +1,113 @@
+///////////////////////////////////////////////////////////////////////////////////////////
+/*
+    NAME:    sva_makeCurrent
+    INFO:    modified version of op_openItem to set the selected item as open without actually changing scenes
+    INPUT:   none
+    RETURN:  none
+*/
+///////////////////////////////////////////////////////////////////////////////////////////
+global proc int sva_makeCurrent()
+{
+	//string $type, int $tab, string $level1, string $level2, string $level3, int $versionOffset;
+    string $type = "workshop";
+    int $tab = `optionVar -q "op_currTab"`;
+    string $depthSA[] = openPipelineGetCurrentlySelectedItem($tab, 3);
+    // int $depth = size($depthSA);
+    string $level1 = $depthSA[0];
+    string $level2 = $depthSA[1];
+    string $level3 = $depthSA[2];
+    int $versionOffset = 0;
+    
+	string $folder = `openPipelineGetFileName $tab $level1 $level2 $level3 "folder" 0 0`;
+	int $depth = `openPipelineGetDepth $level1 $level2 $level3`;
+	if (($depth>1)&&(`filetest -d $folder`)&&($type=="workshop"||$type=="master"))
+	{
+		int $version = 0;
+        string $saveNewWorkshop = "";
+		string $currLevel1 = `optionVar -q op_currOpenLevel1`;
+		if ((`file -q -mf`)&&(size($currLevel1)))
+		{		
+			string $confirm;
+			string $wName = `optionVar -q "op_workshopName"`;
+			$confirm = `confirmDialog -t "openPipeline" -m ("Would you like to Save "+$wName+" before editing Asset?") -b "Save" -b "Don't Save" -b "Cancel" -db "Save"`;
+			if ($confirm==("Save"))
+				openPipelineSaveWorkshop "saved before opening new item";
+			else if ($confirm=="Cancel")
+				return 0;
+		}
+		string $fileToOpen = `openPipelineGetFileName $tab $level1 $level2 $level3 $type $versionOffset 0`;
+		string $latestWorkshop = `openPipelineGetFileName $tab $level1 $level2 $level3 $type 0 0`;
+		string $category = `openPipelineGetCategory $tab $level1 $level2 $level3`;
+		if (`filetest -r $fileToOpen`)
+		{
+			$version = openPipelineGetVersionFromFile($fileToOpen);
+		}
+		else if (($type=="workshop")&&(!`filetest -r $latestWorkshop`))
+		{
+			string $choice = `confirmDialog -t "Edit Asset" -m "You are about to edit an item for the first time. Would you like to start with an new scene, or the currently open scene?" -b "New Scene" -b "Current Scene" -b "Cancel" -cb "Cancel" -db "Current Scene"`;
+			if ($choice=="Cancel")
+				return 0;
+			else if ($choice=="New Scene") 
+            {
+				file -f -new;
+                $saveNewWorkshop = "New workshop from empty scene.";
+            }
+            else    
+                $saveNewWorkshop = "New workshop created from "+`optionVar -q "op_currOpenLevel2"`+"_"+`optionVar -q "op_currOpenLevel3"`+".";
+		}
+		else
+		{
+			warning ("openPipelineOpenItem: File Not Found \n");
+			return 0; // failure
+		}
+		optionVar -sv "op_currOpenType" $type;
+		optionVar -iv "op_currOpenVersion" $version;
+		optionVar -sv "op_currOpenCategory" $category;
+		optionVar -sv "op_currOpenLevel1" $level1;
+		optionVar -sv "op_currOpenLevel2" $level2;
+		optionVar -sv "op_currOpenLevel3" $level3;
+		optionVar -iv "op_currOpenTab" $tab;
+        
+		
+        if ($saveNewWorkshop != "") 
+            openPipelineSaveWorkshop($saveNewWorkshop);
+            
+		openPipelineUpdateAssetList(1);
+		openPipelineUpdateShotList(1);
+		openPipelineUpdateCurrentlyOpen();
+	}
+	else
+	{
+		warning ("openPipelineOpenItem: Invalid command or Item doesn't exist.");
+		return 0;
+	}
+	return 1 ;
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+/*
+    NAME:    sva_swapRef
+    INFO:    replaces the selected objects reference with the the asset selected in OP
+    INPUT:   none
+    RETURN:  none
+*/
+///////////////////////////////////////////////////////////////////////////////////////////
+global proc sva_swapRef()
+{
+    // GET THE MASTER FOR THE SELECTED OP ITEM
+    int $tab = `optionVar -q "op_currTab"`;
+    string $depthSA[] = openPipelineGetCurrentlySelectedItem($tab, 3);
+    int $depth = size($depthSA);
+    string $level1 = $depthSA[0];
+    string $level2 = $depthSA[1];
+    string $level3 = $depthSA[2];    
+    string $file = `openPipelineGetFileName $tab $level1 $level2 $level3 "master" 0 0`;
+    // FIND THE REFERENCE NODE FROM SELECTION
+    string $sel[] = `ls -sl`;
+    string $refNode = `referenceQuery -rfn $sel[0]`;
+    // REPLACE THE PATH
+    file -loadReference $refNode -options "v=0" $file; 
+    string $nameSpace = ($level2 + "_" + $level3);
+    // CHANGE THE NAMESPACE
+    string $newFile = `referenceQuery -f $refNode`;
+    file -e -namespace $nameSpace $newFile;   
+}
