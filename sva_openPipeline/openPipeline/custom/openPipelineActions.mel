@@ -1,0 +1,121 @@
+//###########################################
+// Name: 					openPipelineSaveMaster
+// Description: 	Saves a master for the currently open item
+// Input: 				$comment - a comment to accompany the version being mastered
+//								$flatten - whether to flatten references before mastering
+//								$deleteDispLayers - whether to delete display layers before mastering
+//								$openMaster - whether to open the master file after saving
+//								$customCommand - an optional custom mel command to execute before mastering
+// Returns: 			success - 1  failure - 0
+//###########################################
+global proc int openPipelineSaveMaster(string $comment, int $after, string $customCommand)
+{
+	string $ext = `optionVar -q "op_masterFormat"`;
+	string $level1 = `optionVar -q "op_currOpenLevel1"`;
+	string $level2 = `optionVar -q "op_currOpenLevel2"`;
+	string $level3 = `optionVar -q "op_currOpenLevel3"`;
+	int $tab = `optionVar -q "op_currOpenTab"`;
+	string $masterName = `optionVar -q "op_masterName"`;
+	string $masterFile = openPipelineGetFileName($tab,$level1,$level2,$level3,"master",0,0);
+	string $destinationFile = openPipelineGetFileName($tab,$level1,$level2,$level3,"nextVersion",0,0);
+	// openPipelineSaveWorkshop($comment);
+	sysFile -rename $destinationFile $masterFile;
+
+	if($customCommand != "")
+	{
+		print ("openPipeline: begin custom command " + $customCommand + "\n");
+		evalEcho $customCommand;
+		print ("openPipeline: end custom command " + $customCommand + "\n");
+	}
+	// save the current file to the master location
+	file -rename $masterFile;
+	
+	string $type;
+	if ($ext == "ma")
+	    $type = "mayaAscii";
+	else if ($ext == "mb")
+	    $type = "mayaBinary";
+	else
+	{
+	    $type = "mayaBinary";
+	    warning ("openPipelineSaveMaster: Invalid file format ("+$ext+")specified: saving to Maya Binary");
+	}   
+	file -save -type $type;
+
+	if($after == 1)
+	{
+		openPipelineOpenItem("workshop", $tab, $level1, $level2, $level3, 0);
+	}else if($after == 2){
+		optionVar -sv "op_currOpenType" "master";
+	}else if($after == 3){
+		openPipelineCloseCurrent;
+		file -new;
+	}
+
+	openPipelineAddEventNote($tab, $level1, $level2, $level3, $masterName, 0, $comment);
+	return 1;
+}
+//###########################################
+// Name: 					openPipelineOpenItem
+// Description: 	Opens an item for editing.
+// Input: 				$type - "workshop" or "master"
+//								$tab, $level1, $level2, $level3 - the item
+//								$versionOffset - if opening a workshop, the offset from the latest version
+//																 (use 0 for latest version)
+// Returns: 			success - 1 failure - 0
+//###########################################
+global proc int openPipelineForceOpenItem(string $type, int $tab, string $level1, string $level2, string $level3, int $versionOffset)
+{
+	string $folder = `openPipelineGetFileName $tab $level1 $level2 $level3 "folder" 0 0`;
+	int $depth = `openPipelineGetDepth $level1 $level2 $level3`;
+	if (($depth>1)&&(`filetest -d $folder`)&&($type=="workshop"||$type=="master"))
+	{
+		int $version = 0;
+		string $currLevel1 = `optionVar -q op_currOpenLevel1`;
+		// if ((`file -q -mf`)&&(size($currLevel1)))
+		// {		
+		// 	string $confirm;
+		// 	string $wName = `optionVar -q "op_workshopName"`;
+		// 	$confirm = `confirmDialog -t "openPipeline" -m ("Would you like to Save "+$wName+" before editing Asset?") -b "Save" -b "Don't Save" -b "Cancel" -db "Save"`;
+		// 	if ($confirm==("Save"))
+		// 		openPipelineSaveWorkshop "saved before opening new item";
+		// 	else if ($confirm=="Cancel")
+		// 		return 0;
+		// }
+		string $fileToOpen = `openPipelineGetFileName $tab $level1 $level2 $level3 $type $versionOffset 0`;
+		string $latestWorkshop = `openPipelineGetFileName $tab $level1 $level2 $level3 $type 0 0`;
+		string $category = `openPipelineGetCategory $tab $level1 $level2 $level3`;
+		if (`filetest -r $fileToOpen`)
+		{
+			$version = openPipelineGetVersionFromFile($fileToOpen);
+			file -f -open $fileToOpen;
+		}
+		else if (($type=="workshop")&&(!`filetest -r $latestWorkshop`))
+		{
+			file -f -new;
+			// string $choice = `confirmDialog -t "Edit Asset" -m "You are about to edit an item for the first time. Would you like to start with an new scene, or the currently open scene?" -b "New Scene" -b "Current Scene" -b "Cancel" -cb "Cancel" -db "Current Scene"`;
+			// if ($choice=="New Scene")
+			// 	file -f -new;
+			// else if ($choice=="Cancel")
+			// 	return 0;
+		}
+		else
+		{
+			warning ("openPipelineOpenItem: File Not Found \n");
+			return 0; // failure
+		}
+		optionVar -sv "op_currOpenType" $type;
+		optionVar -iv "op_currOpenVersion" $version;
+		optionVar -sv "op_currOpenCategory" $category;
+		optionVar -sv "op_currOpenLevel1" $level1;
+		optionVar -sv "op_currOpenLevel2" $level2;
+		optionVar -sv "op_currOpenLevel3" $level3;
+		optionVar -iv "op_currOpenTab" $tab;
+	}
+	else
+	{
+		warning ("openPipelineOpenItem: Invalid command or Item doesn't exist. \n");
+		return 0;
+	}
+	return 1 ;
+}

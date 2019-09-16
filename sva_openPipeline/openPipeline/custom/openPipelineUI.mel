@@ -273,7 +273,7 @@ global proc openPipelineUI()
 				$op_currOpenActionsTxt = `text -fn "smallBoldLabelFont" -label "Actions" -w 100 -al "left"`;
 				
 				$op_currOpenSaveWorkshopButton = `button -l "Save Workshop..." -w 164 -bgc .8 .6 .5 -c "openPipelineSaveWorkshopGUI" -ann $anno_saveWorkshop op_saveWorkshopButton`;
-				$op_currOpenMasterButton = `button -l "MASTER..." -w 164 -bgc .9 .7 .4 -c "openPipelineSaveMasterFileGUI" -ann $anno_master op_masterButton`;
+				$op_currOpenMasterButton = `button -l "MASTER..." -w 164 -bgc .9 .7 .4 -c "python(\"import sva_master.ui; sva_master.ui.UI()\")" -ann $anno_master op_masterButton`;
 				$op_currOpenReviveButton = `button -l "Revive..."  -bgc .5 .7 .7 -w 82 -c "openPipelineReviveGUI" -ann $anno_revive op_reviveButton`;
 				$op_currOpenCloseButton = `button -l "Close"  -bgc .8 .8 .8 -c "openPipelineCloseCurrent" -ann $anno_closeFile op_closeButton`;
 				
@@ -1239,5 +1239,65 @@ global proc openPipelineNewAssetRetrieveInfo(int $mode)
 			openPipelineRemoveSecondaryWindows();
             openPipelineUpdateWorkingTab();
 		}
+	}
+}
+//###########################################
+// Name: 					openPipelineMasterCallback
+// Description: 	Retrieves pertinent info from the UI before calling "openPipelineSaveMaster"
+// Input: 				none
+// Returns: 			none
+//###########################################
+global proc openPipelineMasterCallback()
+{
+	// int $flatten = `checkBox -q -v masterImportReferencesBox`;
+	// int $deleteDispLayers = `checkBox -q -v  masterDeleteLayersBox`;
+	string $customCommand = `textField -q -tx op_masterCommandField`;
+	string $comment = `scrollField -q -tx op_masterCommentField`;
+
+	int $after = `radioButtonGrp -q -sl op_afterMasterField`;
+	
+	//int $openMaster = `checkBox -q -v masterOpenMasterBox`;
+	//int $openNew = `checkBox -q -v op_masterOpenNewFileBox`;
+
+	int $result = openPipelineSaveMaster($comment, $after, $customCommand);
+	if ($result)
+	{
+		openPipelineRemoveSecondaryWindows;
+		openPipelineUpdateCurrentlyOpen;
+	}
+}
+//###########################################
+// Name: 					openPipelineNewShotRetrieveInfo
+// Description: 	Retrieves pertinent info from the UI before calling "openPipelineCreateNewItem"
+// Input: 				$mode - creation mode for shot (see "openPipelineCreateNewItem")
+// Returns: 			none
+//###########################################
+global proc openPipelineNewShotRetrieveInfo(int $mode)
+{
+	$shotName = strip(`textField -q -tx op_newShotNameField`);
+	string $selectedItem[] = openPipelineGetCurrentlySelectedItem(3, 1);
+	string $sequence = $selectedItem[0];
+	if (!size($sequence))
+	{
+		confirmDialog -t "Create New Shot Error" -m "No Sequence selected. Please select a Sequence and try again." -button "OK" ;
+	}
+	string $result = openPipelineCreateNewItem(3,$sequence,$shotName,"",$mode);
+	if (size($result))
+	{
+		// Commenting out creation of components. In future, we will have different project types and create the appropriate components.
+		/*
+		// Create Shot components
+		string $projType = "default";
+		string $components[] = `openPipelineGetProjectAssetTypeComponents $projType "shot"`;
+		for ( $comp in $components )
+			openPipelineCreateNewItem(3, $sequence, $shotName, $comp, $mode);
+		*/
+		// AUTO CREATE THESE COMPONENTS!
+		string $components[] = {"ANM", "LGT", "FX"};
+		for ( $comp in $components )
+			openPipelineCreateNewItem(3,$sequence,$shotName,$comp,$mode);
+
+		openPipelineUpdateShotList(1);
+		openPipelineRemoveSecondaryWindows();
 	}
 }
