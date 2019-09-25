@@ -1,44 +1,12 @@
 import maya.cmds as cmds
 import maya.mel as mel
 import os
+import traceback
 
 from . import plugins
 reload(plugins)
 
-# task can either be component name or 'shot' or 'asset'
-PROCESSORS = [
-    {
-        'name': 'import references',
-        'description':
-        'imports all of the references in the scene. Unloaded references will be removed',
-        'order': 1,
-        'cmd': 'import plugins.referencing; plugins.referencing.import_refs()',
-        'task': ['asset']
-    },
-    {
-        'name': 'remove namespaces',
-        'description': 'removes all namespaces in the scene',
-        'order': 2,
-        'cmd':
-        'import plugins.referencing; plugins.referencing.remove_namespaces()',
-        'task': ['asset']
-    },
-    {
-        'name': 'delete display layers',
-        'description': 'removes all display layers in the scene',
-        'order': 2,
-        'cmd':
-        'import plugins.cosmetics; plugins.cosmetics.delete_display_layers()',
-        'task': ['asset']
-    },
-    {
-        'name': 'delete JUNK group',
-        'description': 'deletes all objects in a group named JUNK',
-        'order': 2,
-        'cmd': 'import plugins.cosmetics; plugins.cosmetics.delete_junk_grp()',
-        'task': ['asset']
-    },
-]
+from .processors import *
 
 
 class UI():
@@ -247,10 +215,10 @@ class ProcessorUI():
             exec(self.processor_dict['cmd'])
             self.update_status('pass')
             return 1
-        except Exception as e:
+        except Exception:
             cmds.warning(
                 '{plugin} failed with the following error:\n {error}'.format(
-                    plugin=self.processor_dict['name'], error=e))
+                    plugin=self.processor_dict['name'], error=traceback.print_exc()))
             self.update_status('fail')
             return 0
 

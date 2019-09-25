@@ -32,3 +32,20 @@ def remove_namespaces():
         if ns != 'UI' and ns != 'shared':
             cmds.namespace(removeNamespace=ns, mergeNamespaceWithParent=True)
             print('Removed namespace: {}'.format(ns))
+
+def convert_namespaces():
+    """
+    Converts all : to _ for each namespace in the scene
+    """
+    cmds.namespace(set=":")
+    done = 0
+    while done == 0:
+        fails = []
+        for obj in cmds.ls():
+            if ":" in obj:
+                try:
+                    cmds.rename(obj, obj.replace(":", "_"))
+                except:
+                    fails.append(obj)
+        if len(fails) == 0:
+            done = 1

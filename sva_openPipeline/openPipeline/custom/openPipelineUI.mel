@@ -168,9 +168,15 @@ global proc openPipelineUI()
 			
 			
             menu -label "SVA";
+				menuItem -subMenu true -label "Pipeline" ;
+                    menuItem -label "Create Bake Set"     -ann "Creates a bake set to be cached in the pipeline." -c "python(\"import sva_tools.sets; sva_tools.sets.create_bakeSet()\")";
+				setParent -menu ..;
                 menuItem -subMenu true -label "Referencing" ;
                     menuItem -label "Remove Shading Edits"     -ann "Removes any shading edits done to the selected referenced objects." -c "sva_removeShadingEdits;";
                     menuItem -label "Dupe and assign referenced shaders"     -ann "Duplicates the referenced shaders assigned to the selected objects and assigns the new duplicates." -c "sva_dupeAssignRefShdrs;";
+                setParent -menu ..;
+				menuItem -subMenu true -label "Look Dev" ;
+                    menuItem -label "Reference Asset Cache"     -ann "References the static alembic cache exported from the RIG on master." -c "python(\"import sva_tools.abc; sva_tools.abc.reference_asset_abc()\")";
                 setParent -menu ..;
 				
 			menu -label "Help" -helpMenu true;
@@ -1230,7 +1236,7 @@ global proc openPipelineNewAssetRetrieveInfo(int $mode)
 			for ( $comp in $components )
 				openPipelineCreateNewItem(2,$assetType,$assetName,$comp,$mode);
 			// Create workspaces
-            python("sva_utils.create_workspaces('" + $assetType + "','" + $assetName + "')")
+            python("import sva_tools.pipeline; sva_tools.pipeline.create_workspaces('" + $assetType + "','" + $assetName + "')")
 			// string $assetPSDFolder = `openPipelineGetFileName 2 $assetType $assetName "" "folder" 0 0` + "textures/PSD";
 
 			// python("import os\nos.makedirs('" + $assetPSDFolder + "')");

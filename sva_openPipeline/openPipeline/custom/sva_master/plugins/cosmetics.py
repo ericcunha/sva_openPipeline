@@ -24,4 +24,4 @@ def delete_junk_grp():
                 '{junk} group could not be deleted, check contents'.format(
                     junk=junk))
         else:
-            print('Deleted {junk} group'.format(junk))
+            print('Deleted {junk} group'.format(junk=junk))
