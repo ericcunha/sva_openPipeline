@@ -175,6 +175,9 @@ global proc openPipelineUI()
                     menuItem -label "Remove Shading Edits"     -ann "Removes any shading edits done to the selected referenced objects." -c "sva_removeShadingEdits;";
                     menuItem -label "Dupe and assign referenced shaders"     -ann "Duplicates the referenced shaders assigned to the selected objects and assigns the new duplicates." -c "sva_dupeAssignRefShdrs;";
                 setParent -menu ..;
+                menuItem -subMenu true -label "Animation" ;
+                    menuItem -label "ABC Exporter"     -ann "Opens up the alembic exporter UI." -c "python(\"import sva_alembic.exporter.ui;  sva_alembic.exporter.ui.Show()\")";
+                setParent -menu ..;
 				menuItem -subMenu true -label "Look Dev" ;
                     menuItem -label "Reference Asset Cache"     -ann "References the static alembic cache exported from the RIG on master." -c "python(\"import sva_tools.abc; sva_tools.abc.reference_asset_abc()\")";
                 setParent -menu ..;

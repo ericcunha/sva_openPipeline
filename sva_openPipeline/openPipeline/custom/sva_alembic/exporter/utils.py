@@ -1,109 +1,27 @@
+from bakeset import Bakeset
 import maya.cmds as cmds
+import maya.mel as mel
 import os
+import traceback
 
-
-def get_op_file_info():
-	"""
-		queries openPipeline optionVars for the currently open file
-
-		return:
-		op_file_info = a dictionary with the following keys:values:
-					tab = currently open tab
-					cat = whether it's a shot, asset type, or component
-					level1 = currently open level1
-					level2 = currently open level2
-					level3 = currently open level3
-					version = currently open version
-	"""
-	op_file_info = {
-		"tab" : cmds.optionVar(q='op_currOpenTab'),
-		"cat" : cmds.optionVar(q='op_currOpenCategory'),
-		"level1" : cmds.optionVar(q='op_currOpenLevel1'),
-		"level2" : cmds.optionVar(q='op_currOpenLevel2'),
-		"level3" : cmds.optionVar(q='op_currOpenLevel3'),
-		"version" : cmds.optionVar(q='op_currOpenVersion'),
-	}
-	return op_file_info
-
-
-def get_op_proj_info():
-	"""
-		queries openPipeline project related optionVars
-
-		return:
-		op_proj_info = a dictionary with the following keys & values:
-					proj_name = current project name
-					proj_path = current project path
-					lib_path = current project lib path
-					shot_path = current project shot path
-					asset_types = all asset types in current project
-	"""
-	op_proj_info = {
-		"proj_name" : cmds.optionVar(q='op_currProjectName'),
-		"proj_path" : cmds.optionVar(q='op_currProjectPath'),
-		"lib_path" : cmds.optionVar(q='op_libPath'),
-		"shot_path" : cmds.optionVar(q='op_shotPath'),
-		"asset_types" : cmds.optionVar(q='op_assetTypes'),
-	}
-	return op_proj_info
-
-
-def get_cache_dir(proj_path, tab, level1, level2, level3):
-	"""
-		gets the cache dir for the currently open shot in openPipeline
-
-		args:
-		proj_path = path to the current project
-		tab = the currently open tab in openPipeline
-		level1 = currently open level1 in openPipeline
-		level2 = currently open level2 in openPipeline
-
-		return:
-		cache_dir = the cache directory
-	"""
-	cache_dir = os.path.join(proj_path, 'cache', 'alembic', level1, level2, level3).replace('/', '\\')
-	return cache_dir
+import sva_alembic.utils
+import bakeset
+reload(bakeset)
 
 
 def get_bake_sets():
     """
-        gets all the bakeSets in the scene along with some useful info for each
+        gets all the bakeSets in the scene and creates a Bakeset object for them
 
         return:
-        bake_sets = a nested dictionary where the keys are all of the bakeSets and the nested dict is:
-                    namespace = the namespace of the bake sets (if not a reference, grabs the prefix of the bakeSet)
-					asset_type = the asset type from openPipeline (if not an op asset, will return 'custom')
-					path = the path of the referenced file (returns none as a string if not a reference)
+        bake_sets = a list of Bakeset objects
     """
     sets = cmds.ls('::*bake_SET')
-    bake_sets = {}
+    bake_sets = []
     for bake_set in sets:
-        namespace = ''
-        asset_type = ''
-        path = ''
-
-        # if it's referenced, get the namespace and file path
-        if cmds.referenceQuery(bake_set, inr=1):
-            namespace = bake_set.rpartition(':')[0]
-            path =  cmds.referenceQuery(bake_set, filename=True, wcn=1)
-            if '/lib/' in path:
-                asset_type = path.split('/lib/')[1].split('/')[0]
-            else:
-                asset_type = 'custom'
-
-        # if not, just store the prefix of the bakeSet
-        else:
-            namespace = bake_set.rpartition('_')[0]
-            asset_type = 'custom'
-            path = 'none'
-
-        bake_sets[bake_set] = {
-            'namespace' : namespace,
-            'asset_type' : asset_type,
-            'path' : path,
-        }
-
+        bake_sets.append(bakeset.Bakeset(bake_set))
     return bake_sets
+
 
 def get_shot_assets():
     """
@@ -116,3 +34,65 @@ def get_shot_assets():
         if '/lib/' in ref:
             assets.append(ref.split('/lib/')[1].split('/')[0])
     return sorted(set(assets))
+
+
+def get_cache_file(namespace, cache_path):
+    # get cache version
+    cache_files = []
+    for file in os.listdir(cache_path):
+        if file.endswith('.abc'):
+            cache_files.append(file)
+
+    # build filename
+    version = str(len(cache_files)+1).zfill(3)
+    filename = (namespace + '_cache_v' + version + ".abc")
+    cache_file = os.path.join(cache_path, filename)
+
+    return cache_file
+
+
+# def get_frame_range(static=0):
+#     start = cmds.playbackOptions(q=True, min=True)
+#     end = cmds.playbackOptions(q=True, max=True)
+#     current = cmds.currentTime(q=True)
+#     if static:
+#         start = current
+#         end = current
+#     frange = [start, end]
+#     return frange
+
+
+def get_abc_job(bake_set, frame_range):
+    # reload our bake_set
+    bake_set.reload()
+
+    # make the cache dir
+    cache_dir = sva_alembic.utils.get_cache_dir()
+    cache_path = os.path.join(cache_dir, bake_set.category, bake_set.namespace)
+    if not os.path.isdir(cache_path):
+        os.makedirs(cache_path)
+
+    # get the cache file name
+    cache_file = get_cache_file(bake_set.namespace, cache_path)
+
+    # build the roots command string
+    root_cmd = '-root {}'.format(' -root '.join(bake_set.members))
+
+    # build the alembic command string
+    step = bake_set.step
+    static = bake_set.static
+    # frame_range = get_frame_range(static)
+
+    job = ("-frameRange " + str(frame_range[0]) + " " + str(frame_range[1]) + " -step " + str(
+        step) + " -wuvs -uvWrite -worldSpace -writeVisibility -dataFormat ogawa " + root_cmd + " -file \\\"" + cache_file.replace('\\', '/') + "\\\"")
+    return job
+
+
+def export_abc(job):
+    if not cmds.pluginInfo('AbcExport.mll', q=True, loaded=True):
+        cmds.loadPlugin('AbcExport.mll')
+    try:
+        cmd = "AbcExport -j \"" + job + "\";"
+        mel.eval(cmd)
+    except:
+        print(traceback.format_exc())
