@@ -184,7 +184,8 @@ global proc openPipelineUI()
                 menuItem -subMenu true -label "Lighting" ;
                     menuItem -label "Set Output Path"     -ann "Sets the output path in the render globals." -c "python(\"import sva_tools.lighting; reload(sva_tools.lighting); sva_tools.lighting.set_fnp()\")";
                     menuItem -label "Set Render Globals"     -ann "Sets up the render globals with defaults to start a lighting scene." -c "python(\"import sva_tools.lighting; reload(sva_tools.lighting); sva_tools.lighting.set_globals('arnold')\")";
-                setParent -menu ..;
+                    menuItem -label "ABC Importer"     -ann "Opens up the alembic importer UI." -c "python(\"import sva_alembic.importer.ui;  sva_alembic.importer.ui.Show()\")";
+				setParent -menu ..;
 
 			menu -label "Help" -helpMenu true;
 				 menuItem -label "About openPipeline..." -command openPipelineAboutDialog;

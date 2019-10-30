@@ -1,3 +1,4 @@
+from .processors import *
 import maya.cmds as cmds
 import maya.mel as mel
 import os
@@ -5,8 +6,6 @@ import traceback
 
 from . import plugins
 reload(plugins)
-
-from .processors import *
 
 
 class UI():
@@ -45,8 +44,7 @@ class UI():
                 title="openPipeline message")
         else:
             cmds.confirmDialog(
-                message=
-                "Nothing is currently open for editing. Action not possible.",
+                message="Nothing is currently open for editing. Action not possible.",
                 button="OK",
                 title="openPipeline message")
 
@@ -160,8 +158,9 @@ class UI():
             enabled = 1
         if 'shot' in processor['task'] and self.tab == 3:
             enabled = 1
-        if self.level3 in processor['task']:
-            enabled = 1
+        for task in processor['task']:
+            if task in self.level3:
+                enabled = 1
         # is there component level enabledness?
         # is there project level enabledness?
         return enabled
@@ -180,8 +179,7 @@ class UI():
             failed_processors_str = '\n'.join(self.failed_processors)
             prompt = cmds.confirmDialog(
                 title='Failed Processors',
-                message=
-                'The following processors have failed:\n\n{failed}\n\nDo you want to continue Mastering (dangerous!) or reopen the workshop?'
+                message='The following processors have failed:\n\n{failed}\n\nDo you want to continue Mastering (dangerous!) or reopen the workshop?'
                 .format(failed=failed_processors_str),
                 button=['Continue Mastering', 'Reopen Workshop'],
                 defaultButton='Reopen Workshop',

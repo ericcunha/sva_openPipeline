@@ -12,24 +12,21 @@ PROCESSORS = [
         'name': 'remove namespaces',
         'description': 'removes all namespaces in the scene',
         'order': 2,
-        'cmd':
-        'import plugins.referencing; plugins.referencing.remove_namespaces()',
+        'cmd': 'import plugins.referencing; plugins.referencing.remove_namespaces()',
         'task': ['MDL', 'SHD']  # we want to CONVERT in the rig for our ABC
     },
     {
         'name': 'convert namespaces',
         'description': 'converts all : to _ for each namespace in the scene',
         'order': 2,
-        'cmd':
-        'import plugins.referencing; reload(plugins.referencing); plugins.referencing.convert_namespaces()',
+        'cmd': 'import plugins.referencing; reload(plugins.referencing); plugins.referencing.convert_namespaces()',
         'task': ['RIG']  # we want to CONVERT in the rig for our ABC
     },
     {
         'name': 'delete display layers',
         'description': 'removes all display layers in the scene',
         'order': 2,
-        'cmd':
-        'import plugins.cosmetics; plugins.cosmetics.delete_display_layers()',
+        'cmd': 'import plugins.cosmetics; plugins.cosmetics.delete_display_layers()',
         'task': ['asset']
     },
     {
@@ -43,8 +40,7 @@ PROCESSORS = [
         'name': 'export static ABC',
         'description': 'exports a static cache of the bake_SET for SHD',
         'order': 3,
-        'cmd':
-        'import plugins.modeling; reload(plugins.modeling); plugins.modeling.export_abc_model()',
+        'cmd': 'import plugins.modeling; reload(plugins.modeling); plugins.modeling.export_abc_model()',
         'task': ['RIG']
     },
 ]

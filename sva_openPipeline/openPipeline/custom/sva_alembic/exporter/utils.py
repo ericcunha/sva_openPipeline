@@ -51,17 +51,6 @@ def get_cache_file(namespace, cache_path):
     return cache_file
 
 
-# def get_frame_range(static=0):
-#     start = cmds.playbackOptions(q=True, min=True)
-#     end = cmds.playbackOptions(q=True, max=True)
-#     current = cmds.currentTime(q=True)
-#     if static:
-#         start = current
-#         end = current
-#     frange = [start, end]
-#     return frange
-
-
 def get_abc_job(bake_set, frame_range):
     # reload our bake_set
     bake_set.reload()
