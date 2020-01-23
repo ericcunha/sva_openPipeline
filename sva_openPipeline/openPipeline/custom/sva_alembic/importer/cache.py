@@ -69,8 +69,9 @@ class Cache():
 
         components = self.get_components()
         shd_components = [c for c in components if 'SHD' in os.path.basename(c)]
+        master_ext = cmds.optionVar(q='op_masterFormat')
         for shd in shd_components:
-            publishes = [f for f in os.listdir(shd) if os.path.isfile(os.path.join(shd, f))]
+            publishes = [f for f in os.listdir(shd) if f.endswith('.{master}'.format(master=master_ext))]
             if publishes:
                 shds.append({
                     'name': os.path.basename(shd),
